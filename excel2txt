@@ -76,6 +76,11 @@ for my $file ( @files ) {
 
     WORKSHEET:
     for my $ws ( @{ $workbook->{'Worksheet'} } ) {
+        my $min_row = $ws->{'MinRow'};
+        my $min_col = $ws->{'MinCol'};
+        my $max_row = $ws->{'MaxRow'} or next;
+        my $max_col = $ws->{'MaxCol'} or next;
+
         my $out_name;
         if ( $num_worksheets > 1 ) {
             $out_name = join('-', $output_base, _normalize( $ws->{'Name'} ) );
@@ -100,10 +105,6 @@ for my $file ( @files ) {
         open my $out_fh, '>', $out_file
             or die "Can't write to '$out_file': $!\n";
 
-        my $min_row  = $ws->{'MinRow'};
-        my $min_col  = $ws->{'MinCol'};
-        my $max_row  = $ws->{'MaxRow'} or next;
-        my $max_col  = $ws->{'MaxCol'} or next;
         my $num_rows = 0;
 
         { 
