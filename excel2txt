@@ -1,26 +1,36 @@
 #!/usr/local/bin/perl
 
+# $Id$
+
 use strict;
 use warnings;
 use Cwd;
 use English qw( -no_match_vars );
-use File::Basename;
+use File::Basename qw( basename );
 use File::Spec::Functions;
+use File::Path qw( mkpath );
 use Getopt::Long;
 use Pod::Usage;
 use Readonly;
 use Spreadsheet::ParseExcel;
 
-Readonly my $VERSION   => '0.01';
-Readonly my $EMPTY_STR => q{};
+Readonly my $VERSION      => '0.02';
+Readonly my $EMPTY_STR    => q{};
 
-my $delimiter = "\t";
+my $delimiter             = "\t";
+my $be_quiet              = 0;
+my $out_dir               = cwd();
+my $normalize_headers     = 0;
 my ( $help, $man_page, $show_version );
+
 GetOptions(
-    'd|ofs:s' => \$delimiter,
-    'help'    => \$help,
-    'man'     => \$man_page,
-    'version' => \$show_version,
+    'd|ofs:s'             => \$delimiter,
+    'q|quiet'             => \$be_quiet,
+    'o|out-dir:s'         => \$out_dir,
+    'n|normalize-headers' => \$normalize_headers,
+    'help'                => \$help,
+    'man'                 => \$man_page,
+    'version'             => \$show_version,
 ) or pod2usage(2);
 
 if ( $help || $man_page ) {
@@ -36,8 +46,13 @@ if ( $show_version ) {
     exit 0;
 }
 
+my $debug = sub { print join("\n", @_, '' ) if !$be_quiet };
 my @files = @ARGV or pod2usage('No input files');
-my $cwd   = cwd();
+
+if ( !-d $out_dir ) {
+    mkpath( $out_dir );
+}
+
 my ( $num_files_processed, $num_out_files ) = ( 0, 0 );
 
 INPUT_FILE:
@@ -47,64 +62,104 @@ for my $file ( @files ) {
         next INPUT_FILE;
     }
 
+    $debug->('Processing '. basename($file));
     my $workbook = Spreadsheet::ParseExcel::Workbook->Parse( $file );
+    my $output_base = _normalize( basename( $file ) );
+    $output_base    =~ s/\.xls$//;
 
     if ( ref $workbook->{'Worksheet'} ne 'ARRAY' ) {
         warn "'$file' has no worksheets (not an Excel spreadsheet?)\n";
         next INPUT_FILE;
     }
 
+    my $num_worksheets = scalar @{ $workbook->{'Worksheet'} };
+
     WORKSHEET:
     for my $ws ( @{ $workbook->{'Worksheet'} } ) {
-        my $min_row = $ws->{'MinRow'};
-        my $min_col = $ws->{'MinCol'};
-        my $max_row = $ws->{'MaxRow'} or next;
-        my $max_col = $ws->{'MaxCol'} or next;
+        my $out_name;
+        if ( $num_worksheets > 1 ) {
+            $out_name = join('-', $output_base, _normalize( $ws->{'Name'} ) );
+        }
+        else {
+            $out_name = $output_base;
+        }
 
-        my @data;
-        for my $row_num ( $min_row .. $max_row ) {
-            my @row;
-            for my $col_num ( $min_col .. $max_col ) {
-                my $cell = $ws->{'Cells'}[ $row_num ][ $col_num ];
-                push @row, defined $cell ? $cell->Value : $EMPTY_STR;
+        my $out_file = catfile( $out_dir, $out_name . '.txt' );
+
+        if ( -e $out_file && -s _ ) {
+            ( my $base = $out_file ) =~ /\.txt$/;
+            my $i;
+
+            while ( -e $out_file && -e _ ) {
+                $out_file = join('', join('-', $base, ++$i ), '.txt');
             }
-
-            if ( @row ) {
-                push @data, \@row;
-            }
         }
 
-        my $ws_name  = $ws->{'Name'};
-
-        if ( !@data ) {
-            warn "No data in worksheet '$ws' in file '$file'\n";
-            next WORKSHEET;
-        }
-
-        my $out_file = catfile( $cwd, $ws_name . '.txt' );
-
-        if ( -e $out_file ) {
-            print "'$out_file' exists.  OK to overwrite? [y/N] ";
-            chomp( my $overwrite = <STDIN> );
-            next WORKSHEET if $overwrite !~ /^[Yy]/;
-        }
+        $debug->("Writing '$out_file'");
 
         open my $out_fh, '>', $out_file
             or die "Can't write to '$out_file': $!\n";
 
-        for my $row ( @data ) {
-            print {$out_fh} join( $delimiter, @$row ), "\n";
+        my $min_row  = $ws->{'MinRow'};
+        my $min_col  = $ws->{'MinCol'};
+        my $max_row  = $ws->{'MaxRow'} or next;
+        my $max_col  = $ws->{'MaxCol'} or next;
+        my $num_rows = 0;
+
+        { 
+            no warnings;
+            for my $row_num ( $min_row .. $max_row ) {
+                my @row;
+                for my $col_num ( $min_col .. $max_col ) {
+                    my $cell = $ws->{'Cells'}[ $row_num ][ $col_num ];
+                    push @row, defined $cell ? $cell->Value : $EMPTY_STR;
+                }
+
+                if ( @row ) {
+                    $num_rows++;
+                    if ( $num_rows == 1 && $normalize_headers ) {
+                        @row = map { _normalize($_) } @row;
+                    }
+
+                    print {$out_fh} join( $delimiter, @row ), "\n";
+                }
+            }
         }
 
         close $out_fh;
+
+        if ( $num_rows <= 1 ) {
+            warn "No data in worksheet '$ws' in file '$file'\n";
+            unlink $out_file;
+            next WORKSHEET;
+        }
+
         $num_out_files++;
     }
 
     $num_files_processed++;
 }
 
-printf "Done, processed %s Excel files, created %s data files.\n",
-    $num_files_processed, $num_out_files;
+$debug->(sprintf(
+    "Done, processed %s Excel file%s, created %s data file%s.",
+    $num_files_processed, 
+    $num_files_processed == 1 ? '' : 's', 
+    $num_out_files,
+    $num_out_files == 1 ? '' : 's', 
+));
+
+exit 0;
+
+# ----------------------------------------------------
+sub _normalize {
+    my $in = shift;
+    if ( defined $in && $in ne '' ) {
+        $in = lc $in;
+        $in =~ s/\s+/_/g;
+        $in =~ s/[[:^ascii:]]//g;
+    }
+    return $in;
+}
 
 __END__
 
@@ -123,10 +178,13 @@ This documentation refers to excel2txt version 0.01.
 
 Options:
 
-  -d|-ofs       Output field delimiter (default is Tab)
-  --help        Show brief help and exit
-  --man         Show full documentation
-  --version     Show version and exit
+  -d|-ofs                 Output field delimiter (default is Tab)
+  -q|--quiet              Do not print any status messages
+  -o|--out-dir            Where to place output file (defaults to CWD)
+  -n|--normalize-headers  Normalize column headers (see below)
+  --help                  Show brief help and exit
+  --man                   Show full documentation
+  --version               Show version and exit
 
 =head1 DESCRIPTION
 
@@ -134,9 +192,20 @@ For each worksheet within an Excel spreadsheet, creates a delimited
 file.  By default, the output files will use a Tab character as the 
 delimiter.  Use the "-d" switch to specify something else.
 
+The output file names will be normalized such that they will consist
+of only lowercase letters with spaces replaced by underscores and
+non-ASCII characters deleted.  The "-n" option will also apply this
+transformation the column headers.  If there is only one worksheet in
+an spreadsheet, then the output file will simply be the spreadsheet's
+name;  if there is more than one worksheet, then a separate output
+file will be created using the spreadsheet's name plus the worksheet's
+name.  In any event where the default output file exists and is of a
+non-zero size, then a "-1" (or "-2," etc.) will be added until a file
+name is found that is not in use.
+
 =head1 SEE ALSO
 
-Spreadsheet::ParseExcel.
+Spreadsheet::ParseExcel, http://code.google.com/p/perl-excel2txt/.
 
 =head1 AUTHOR
 
@@ -144,7 +213,7 @@ Ken Youens-Clark E<lt>kclark@cpan.orgE<gt>.
 
 =head1 COPYRIGHT
 
-Copyright (c) 2005 Ken Youens-Clark
+Copyright (c) 2005-8 Ken Youens-Clark
 
 This library is free software;  you can redistribute it and/or modify 
 it under the same terms as Perl itself.
