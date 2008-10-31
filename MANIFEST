@@ -1,0 +1,8 @@
+Changes
+MANIFEST
+META.yml # Will be created by "make dist"
+Build.PL
+README
+t/excel2txt.t
+t/test.xls
+excel2txt

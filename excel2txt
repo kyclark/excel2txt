@@ -1,0 +1,152 @@
+#!/usr/local/bin/perl
+
+use strict;
+use warnings;
+use Cwd;
+use English qw( -no_match_vars );
+use File::Basename;
+use File::Spec::Functions;
+use Getopt::Long;
+use Pod::Usage;
+use Readonly;
+use Spreadsheet::ParseExcel;
+
+Readonly my $VERSION   => '0.01';
+Readonly my $EMPTY_STR => q{};
+
+my $delimiter = "\t";
+my ( $help, $man_page, $show_version );
+GetOptions(
+    'd|ofs:s' => \$delimiter,
+    'help'    => \$help,
+    'man'     => \$man_page,
+    'version' => \$show_version,
+) or pod2usage(2);
+
+if ( $help || $man_page ) {
+    pod2usage({
+        -exitval => 0,
+        -verbose => $man_page ? 2 : 1
+    });
+}; 
+
+if ( $show_version ) {
+    my $prog = basename( $PROGRAM_NAME );
+    print "$prog v$VERSION\n";
+    exit 0;
+}
+
+my @files = @ARGV or pod2usage('No input files');
+my $cwd   = cwd();
+my ( $num_files_processed, $num_out_files ) = ( 0, 0 );
+
+INPUT_FILE:
+for my $file ( @files ) {
+    unless ( -e $file && -s _ && -r _ ) {
+        warn "'$file' doesn't exist, is zero-length or unreadable, skipping.\n";
+        next INPUT_FILE;
+    }
+
+    my $workbook = Spreadsheet::ParseExcel::Workbook->Parse( $file );
+
+    if ( ref $workbook->{'Worksheet'} ne 'ARRAY' ) {
+        warn "'$file' has no worksheets (not an Excel spreadsheet?)\n";
+        next INPUT_FILE;
+    }
+
+    WORKSHEET:
+    for my $ws ( @{ $workbook->{'Worksheet'} } ) {
+        my $min_row = $ws->{'MinRow'};
+        my $min_col = $ws->{'MinCol'};
+        my $max_row = $ws->{'MaxRow'} or next;
+        my $max_col = $ws->{'MaxCol'} or next;
+
+        my @data;
+        for my $row_num ( $min_row .. $max_row ) {
+            my @row;
+            for my $col_num ( $min_col .. $max_col ) {
+                my $cell = $ws->{'Cells'}[ $row_num ][ $col_num ];
+                push @row, defined $cell ? $cell->Value : $EMPTY_STR;
+            }
+
+            if ( @row ) {
+                push @data, \@row;
+            }
+        }
+
+        my $ws_name  = $ws->{'Name'};
+
+        if ( !@data ) {
+            warn "No data in worksheet '$ws' in file '$file'\n";
+            next WORKSHEET;
+        }
+
+        my $out_file = catfile( $cwd, $ws_name . '.txt' );
+
+        if ( -e $out_file ) {
+            print "'$out_file' exists.  OK to overwrite? [y/N] ";
+            chomp( my $overwrite = <STDIN> );
+            next WORKSHEET if $overwrite !~ /^[Yy]/;
+        }
+
+        open my $out_fh, '>', $out_file
+            or die "Can't write to '$out_file': $!\n";
+
+        for my $row ( @data ) {
+            print {$out_fh} join( $delimiter, @$row ), "\n";
+        }
+
+        close $out_fh;
+        $num_out_files++;
+    }
+
+    $num_files_processed++;
+}
+
+printf "Done, processed %s Excel files, created %s data files.\n",
+    $num_files_processed, $num_out_files;
+
+__END__
+
+# ----------------------------------------------------
+=head1 NAME
+
+excel2txt - convert Excel data to delimited text files
+
+=head1 VERSION
+
+This documentation refers to excel2txt version 0.01.
+
+=head1 SYNOPSIS
+
+  excel2txt [options] File1.xls [File2.xls ...]
+
+Options:
+
+  -d|-ofs       Output field delimiter (default is Tab)
+  --help        Show brief help and exit
+  --man         Show full documentation
+  --version     Show version and exit
+
+=head1 DESCRIPTION
+
+For each worksheet within an Excel spreadsheet, creates a delimited 
+file.  By default, the output files will use a Tab character as the 
+delimiter.  Use the "-d" switch to specify something else.
+
+=head1 SEE ALSO
+
+Spreadsheet::ParseExcel.
+
+=head1 AUTHOR
+
+Ken Youens-Clark E<lt>kclark@cpan.orgE<gt>.
+
+=head1 COPYRIGHT
+
+Copyright (c) 2005 Ken Youens-Clark
+
+This library is free software;  you can redistribute it and/or modify 
+it under the same terms as Perl itself.
+
+=cut

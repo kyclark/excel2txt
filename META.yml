@@ -1,0 +1,8 @@
+--- #YAML:1.0
+name: excel2txt
+version: 0.01
+author:
+  - Ken Youens-Clark <kclark@cpan.org>
+abstract: convert Excel data to delimited text files
+license: perl
+generated_by: Module::Build version 0.2611, without YAML.pm
