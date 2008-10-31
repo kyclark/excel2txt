@@ -18,13 +18,13 @@ ok( -e $spreadsheet, "Spreadsheet '$spreadsheet' exists");
 my $tempdir = tempdir( CLEANUP => 1 );
 ok( chdir $tempdir, "Changed dir to '$tempdir'" );
 
-my $res = `$perl $excel2txt $spreadsheet`;
+my @res = split /\n/, `$perl $excel2txt -n $spreadsheet`;
 
-ok( $res =~ /^Done/, "Processed OK" );
+ok( $res[-1] =~ /^Done/, "Processed OK" );
 
-my $people   = catfile( $tempdir, 'People.txt' );
-my $salaries = catfile( $tempdir, 'Salaries.txt' );
-my $empty    = catfile( $tempdir, 'Empty.txt' );
+my $people   = catfile( $tempdir, 'test-people.txt' );
+my $salaries = catfile( $tempdir, 'test-salaries.txt' );
+my $empty    = catfile( $tempdir, 'test-empty.txt' );
 ok( -e $people, "People spreadsheet converted to '$people'" );
 ok( -e $salaries, "Salaries spreadsheet converted to '$salaries'" );
 ok( !-e $empty, "Empty spreadsheet NOT converted to '$empty'" );
