@@ -11,9 +11,15 @@ To install this module, run the following commands:
     ./Build test
     ./Build install
 
+PROJECT HOME
+
+Complete source code/repository/Wiki/etc. is available here:
+
+    http://code.google.com/p/perl-excel2txt/
+
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2005 Ken Youens-Clark
+Copyright (C) 2005-8 Ken Youens-Clark
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
