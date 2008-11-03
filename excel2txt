@@ -14,7 +14,7 @@ use Pod::Usage;
 use Readonly;
 use Spreadsheet::ParseExcel;
 
-Readonly my $VERSION      => '0.02';
+Readonly my $VERSION      => '0.03';
 Readonly my $EMPTY_STR    => q{};
 
 my $delimiter             = "\t";
@@ -168,10 +168,6 @@ __END__
 =head1 NAME
 
 excel2txt - convert Excel data to delimited text files
-
-=head1 VERSION
-
-This documentation refers to excel2txt version 0.01.
 
 =head1 SYNOPSIS
 
