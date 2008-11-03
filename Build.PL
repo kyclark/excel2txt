@@ -2,7 +2,7 @@ use Module::Build;
 
 my $build = Module::Build->new(
     dist_name      => 'excel2txt',
-    dist_version   => '0.02',
+    dist_version   => '0.03',
     dist_author    => 'Ken Youens-Clark <kclark@cpan.org>',
     dist_abstract  => 'convert Excel data to delimited text files',
     license        => 'perl',

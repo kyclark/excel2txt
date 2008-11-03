@@ -1,5 +1,8 @@
 Revision history for excel2txt
 
+0.03    November 3, 2008
+        Fixed test suite.
+
 0.02    October 31, 2008
         Changed output file names to use file names + worksheet name 
         instead of just worksheet names; added options for quiet, 
