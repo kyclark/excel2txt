@@ -1,6 +1,6 @@
 use strict;
 use Config;
-use Test::More 'no_plan';
+use Test::More tests => 11;
 use FindBin qw( $Bin );
 use File::Path;
 use File::Spec::Functions;
@@ -16,9 +16,8 @@ ok( -e $excel2txt, "Script '$excel2txt' exists");
 ok( -e $spreadsheet, "Spreadsheet '$spreadsheet' exists");
 
 my $tempdir = tempdir( CLEANUP => 1 );
-ok( chdir $tempdir, "Changed dir to '$tempdir'" );
 
-my @res = split /\n/, `$perl $excel2txt -n $spreadsheet`;
+my @res = split /\n/, `$perl $excel2txt -n -o $tempdir $spreadsheet`;
 
 ok( $res[-1] =~ /^Done/, "Processed OK" );
 
