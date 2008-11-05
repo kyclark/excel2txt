@@ -57,7 +57,7 @@ if ( $show_version ) {
 }
 
 my @files = @ARGV or pod2usage('No input files');
-my $debug = sub { print join("\n", @_, '' ) if !$be_quiet };
+my $debug = sub { print join( $NL, @_, $EMPTY_STR ) if !$be_quiet };
 
 if ( !-d $out_dir ) {
     mkpath( $out_dir );
@@ -66,8 +66,8 @@ if ( !-d $out_dir ) {
 $output_format = lc $output_format;
 if ( !$VALID_FORMAT{ $output_format } ) {
     pod2usage( sprintf(
-        "'$output_format' is not a valid output format, please choose from %s",
-        join( ', ', map { qq["$_"] } sort keys %VALID_FORMAT ),
+        "'%s' is not a valid output format, please choose from %s",
+        $output_format, join( ', ', map { qq["$_"] } sort keys %VALID_FORMAT ),
     ) );
 }
 
@@ -82,13 +82,24 @@ my ( $num_files_processed, $num_out_files ) = ( 0, 0 );
 
 INPUT_FILE:
 for my $file ( @files ) {
-    unless ( -e $file && -s _ && -r _ ) {
-        warn "'$file' doesn't exist, is zero-length or unreadable, skipping.\n";
+    my $err = $EMPTY_STR;
+    if ( !-e $file ) {
+        $err = q[doesn't exist];
+    }
+    elsif ( !-s _ ) {
+        $err = 'is zero-length';
+    }
+    elsif ( !-r _ ) {
+        $err = 'is unreadable';
+    }
+
+    if ( $err ) {
+        warn "'$file' $err: skipping.\n";
         next INPUT_FILE;
     }
 
     $debug->('Processing '. basename($file));
-    my $workbook = Spreadsheet::ParseExcel::Workbook->Parse( $file );
+    my $workbook    = Spreadsheet::ParseExcel::Workbook->Parse( $file );
     my $output_base = _normalize( basename( $file ) );
     $output_base    =~ s/\.xls$//;
 
@@ -218,9 +229,9 @@ for my $file ( @files ) {
 $debug->(sprintf(
     "Done, processed %s Excel file%s, created %s data file%s.",
     $num_files_processed, 
-    $num_files_processed == 1 ? '' : 's', 
+    $num_files_processed == 1 ? $EMPTY_STR : 's', 
     $num_out_files,
-    $num_out_files       == 1 ? '' : 's', 
+    $num_out_files       == 1 ? $EMPTY_STR : 's', 
 ));
 
 exit 0;
@@ -228,7 +239,7 @@ exit 0;
 # ----------------------------------------------------
 sub _normalize {
     my $in = shift;
-    if ( defined $in && $in ne '' ) {
+    if ( defined $in && $in ne $EMPTY_STR ) {
         $in = lc $in;
         $in =~ s/\s+/_/g;
         $in =~ s/[^a-zA-Z0-9._]//g;

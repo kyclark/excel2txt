@@ -1,6 +1,6 @@
 excel2txt
 
-Coverts Excel spreadsheets to delimited text files.
+Coverts Excel spreadsheets to text formats
 
 INSTALLATION
 
@@ -17,7 +17,7 @@ Complete source code/repository/Wiki/etc. is available here:
 
     http://code.google.com/p/perl-excel2txt/
 
-COPYRIGHT AND LICENCE
+COPYRIGHT AND LICENSE
 
 Copyright (C) 2005-8 Ken Youens-Clark
 
