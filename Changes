@@ -1,5 +1,8 @@
 Revision history for excel2txt
 
+0.04    November 5, 2008
+        Added methods to create YAML, HTML and XML output.
+
 0.03    November 3, 2008
         Fixed test suite.
 
