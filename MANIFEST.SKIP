@@ -1,3 +1,4 @@
+lib
 # Avoid version control files.
 \bRCS\b
 \bCVS\b
@@ -29,3 +30,4 @@
 .#.*
 tar.gz$
 \bcover_db
+^MYMETA.yml$

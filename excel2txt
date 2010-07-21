@@ -14,7 +14,8 @@ use Pod::Usage;
 use Readonly;
 use Spreadsheet::ParseExcel;
 
-Readonly my $VERSION      => '0.04';
+our $VERSION = version->new('0.05');
+
 Readonly my $DASH         => q{-};
 Readonly my $EMPTY_STR    => q{};
 Readonly my $HTML         => q{html};
@@ -156,7 +157,9 @@ for my $file ( @files ) {
                 my @row;
                 for my $col_num ( $min_col .. $max_col ) {
                     my $cell = $ws->{'Cells'}[ $row_num ][ $col_num ];
-                    push @row, defined $cell ? $cell->Value : $EMPTY_STR;
+                    my $val  = defined $cell ? $cell->Value : $EMPTY_STR;
+                    $val     =~ s/\n//gxms;
+                    push @row, $val;
                 }
 
                 if ( @row ) {
@@ -242,7 +245,7 @@ sub _normalize {
     if ( defined $in && $in ne $EMPTY_STR ) {
         $in = lc $in;
         $in =~ s/\s+/_/g;
-        $in =~ s/[^a-zA-Z0-9._]//g;
+        $in =~ s/[^a-zA-Z0-9._-]//g;
     }
     return $in;
 }
@@ -303,7 +306,7 @@ Ken Youens-Clark E<lt>kclark@cpan.orgE<gt>.
 
 =head1 COPYRIGHT
 
-Copyright (c) 2005-8 Ken Youens-Clark
+Copyright (c) 2005-10 Ken Youens-Clark
 
 This library is free software;  you can redistribute it and/or modify 
 it under the same terms as Perl itself.

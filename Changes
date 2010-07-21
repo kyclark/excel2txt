@@ -1,5 +1,8 @@
 Revision history for excel2txt
 
+0.05    July 21, 2010
+        Normalize data a little better, remove newlines from cell values.
+
 0.04    November 5, 2008
         Added methods to create YAML, HTML and XML output.
 
